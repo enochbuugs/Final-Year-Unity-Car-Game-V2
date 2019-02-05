@@ -1,0 +1,4 @@
+All possible variants for all the 3 modifications are collected in 18 prefabs. It is enough to draw the prefab in the chosen place to add a needed variant.
+If required occlusion and emission maps can be minimized almost without degenaration of quality, just as the others. 
+Yet the standard size of all texture maps for each model is 2048*2048 px.
+These models are rendered for the wheel collider settings / customization. 
