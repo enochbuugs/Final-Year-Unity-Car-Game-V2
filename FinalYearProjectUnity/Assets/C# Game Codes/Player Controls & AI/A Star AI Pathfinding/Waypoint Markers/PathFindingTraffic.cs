@@ -7,7 +7,7 @@ public class PathFindingTraffic : MonoBehaviour {
     
     float speed = 5.0f;
     float accuracy = 1.0f;
-    //float rotSpeed = 2.0f;
+    public float avoidanceFactor;
 
     public GameObject waypointManager;
     private GameObject[] wps;
@@ -63,7 +63,6 @@ public class PathFindingTraffic : MonoBehaviour {
     {
         rb = GetComponent<Rigidbody>();
         GetComponent<Rigidbody>().centerOfMass = new Vector3(0, -0.9f, 0.2f);
-
         wps = waypointManager.GetComponent<WPManager>().waypoints;
         g = waypointManager.GetComponent<WPManager>().graph;
         currentNode = wps[0];
@@ -87,11 +86,7 @@ public class PathFindingTraffic : MonoBehaviour {
     {
         Debug.Log(currentSpeed);
         UpdateWheelMotions();
-        //Avoidance();
-
-
-
-
+        Avoidance();
         GoPathfinding();
 	}
 
@@ -131,11 +126,14 @@ public class PathFindingTraffic : MonoBehaviour {
             Vector3 lookAtTheTarget = new Vector3(target.position.x, this.transform.position.y, target.position.z);
 
             Vector3 direction = lookAtTheTarget - transform.position;
+            direction.Normalize();
 
-            transform.rotation = Quaternion.Slerp(this.transform.rotation, Quaternion.LookRotation(direction), Time.deltaTime * rotSpeed);
+            Vector3 avoidVector = Avoidance();
+           
+            transform.rotation = Quaternion.Slerp(this.transform.rotation, Quaternion.LookRotation(direction + avoidVector * avoidanceFactor), Time.deltaTime * rotSpeed);
 
             // losing speed every update with these functions.. needs a hotfix
-            //MoveCar();
+            MoveCar();
 
             // hotfix for now with no wheel colliders
             transform.Translate(0, 0, speed * Time.deltaTime);
@@ -200,31 +198,28 @@ public class PathFindingTraffic : MonoBehaviour {
         wheelFrontRight.steerAngle = steeringAngle;
 
         //SteeringHelp();
-        WheelMeshPosRot();
     }
 
 
-    void Avoidance()
+    Vector3 Avoidance()
     {
         float raycastLength = 10f;
-        float raycastAngle = 20f;
+        bool detectedLeft = false;
+        bool detectedRight = false;
+        bool detectedCentre = false;
 
         RaycastHit hit;
         Ray centreRay = new Ray(this.transform.position, transform.forward);
-        Ray leftRay = new Ray(this.transform.position, Quaternion.AngleAxis(-raycastAngle, transform.up) * transform.forward);
-        Ray rightRay = new Ray(this.transform.position, Quaternion.AngleAxis(raycastAngle, transform.up) * transform.forward);
-
-
-        Vector3 direction = (obstacle.position - this.transform.position).normalized;
-
+        Ray leftRay = new Ray(this.transform.position + Vector3.left * 2, transform.forward);
+        Ray rightRay = new Ray(this.transform.position + Vector3.right * 2, transform.forward);
 
         //forward ray
         if (Physics.Raycast(centreRay, out hit, raycastLength))
         {
             if (hit.transform != transform)
             {
-                //direction += hit.normal * 1;
-                Debug.DrawRay(centreRay.origin, centreRay.direction * raycastLength, Color.red);
+                detectedCentre = true;
+                Debug.DrawRay(centreRay.origin, centreRay.direction * raycastLength, Color.black);
             }
         }
 
@@ -233,7 +228,7 @@ public class PathFindingTraffic : MonoBehaviour {
         {
             if (hit.transform != transform)
             {
-                //direction += hit.normal * 1;
+                detectedLeft = true;
                 Debug.DrawRay(leftRay.origin, leftRay.direction * raycastLength, Color.blue);
             }
         }
@@ -243,13 +238,32 @@ public class PathFindingTraffic : MonoBehaviour {
         {
             if (hit.transform != transform)
             {
-                //direction += hit.normal * 1;
+                detectedRight = true;
                 Debug.DrawRay(rightRay.origin, rightRay.direction * raycastLength, Color.yellow);
             }
         }
 
-        //Quaternion rot = Quaternion.LookRotation(direction);
-        //transform.rotation = Quaternion.Slerp(transform.rotation, rot, Time.deltaTime);
+       return AvoidanceDirection(detectedLeft, detectedRight, detectedCentre);
+    }
+
+    private Vector3 AvoidanceDirection(bool detectedLeft, bool detectedRight, bool detectedCentre)
+    {
+        if (detectedLeft && detectedRight)
+        {
+            return Vector3.left;
+        }
+
+        if (detectedLeft)
+        {
+            return Vector3.right;
+        }
+
+        if (detectedRight)
+        {
+            return Vector3.left;
+        }
+
+        return Vector3.zero;
     }
 
     void UpdateWheelMotion(WheelCollider wheelC, Transform wheelT)
@@ -266,18 +280,5 @@ public class PathFindingTraffic : MonoBehaviour {
         // Both position and rotation.
         wheelT.transform.position = wheelPos;
         wheelT.transform.rotation = wheelRot;
-    }
-
-    void WheelMeshPosRot()
-    {
-        transformWheelFrontLeft.transform.position = wheelPos;
-        transformWheelFrontRight.transform.position = wheelPos;
-        transformWheelRearLeft.transform.position = wheelPos;
-        transformWheelRearRight.transform.position = wheelPos;
-
-        transformWheelFrontLeft.transform.rotation = wheelRot;
-        transformWheelFrontRight.transform.rotation = wheelRot;
-        transformWheelRearLeft.transform.rotation = wheelRot;
-        transformWheelRearRight.transform.rotation = wheelRot;
     }
 }
